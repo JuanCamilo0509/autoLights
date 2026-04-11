@@ -1,5 +1,4 @@
 # Light Module
----
 How to use 
 Configure the project
 
