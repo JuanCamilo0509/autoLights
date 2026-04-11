@@ -3,7 +3,9 @@
 How to use 
 Configure the project
 
-`make menuconfig`
+```
+make menuconfig
+```
 
 - Under configuration set:
     - Broker URL: The URL of the broker to connect to.
@@ -11,11 +13,12 @@ Configure the project
     - Wifi SSID: The name of your network.
     - Wifi PassWord: Password for the Wifi Network.
 
-Build and Flash
+## Build and Flash
 
 Build the project and flash it to the board, then run monitor tool to view serial output:
-
-`make flash monitor`
+```
+make flash monitor
+```
 (To exit the serial monitor, type Ctrl-].)
 
 
