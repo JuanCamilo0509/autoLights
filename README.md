@@ -18,6 +18,18 @@ This project has two main directories:
 
 ## Features
 - HTTP Server on SoftAP mode when the variables aren't on the esp memory to set them up: (SSID, WiFi password, broker and topic).
+<table>
+  <tr>
+    <td>
+      <img src="https://github.com/user-attachments/assets/6bfc00c1-d44d-4a5a-bb21-2c508ba70731" alt="image" width="300" style="max-width:100%;">
+    </td>
+    <td>
+      <img src="https://github.com/user-attachments/assets/c45822a5-f9d3-4cb2-93c4-21846ef6cd5e" alt="image" style="max-width:100%;">
+    </td>
+  </tr>
+</table>
+
+
 
 ## Future features. 
 - Get the button from the web page to work. So you can connect all the esp to your house and then test them and configurare them in place.
