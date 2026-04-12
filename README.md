@@ -16,8 +16,10 @@ This project has two main directories:
     - Software: Two main sub-directories, the light-Module where the code for the esp is maintain, and the "mosquitto-Server" with the ".conf" file for the server. 
     - Hardware: In this repository you can find the PCB layout for the board and the 3d model for the case.
 
+## Features
+- HTTP Server on SoftAP mode when the variables aren't on the esp memory to set them up: (SSID, WiFi password, broker and topic).
+
 ## Future features. 
-- HTTP Server on SoftAP mode when the variables aren't on the esp memory to set them up: (SSID, WiFi password, topic, button check).
-- Get a prototype working on a switch.
+- Get the button from the web page to work. So you can connect all the esp to your house and then test them and configurare them in place.
 - 3d model case for the switch.
-- Better documentation for all the sections.
+

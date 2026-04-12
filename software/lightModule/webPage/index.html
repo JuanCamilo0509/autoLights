@@ -1,0 +1,36 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>EspSetVariables</title>
+  </head>
+  <body style="display: flex; min-height: 100vh; margin: 0; flex-direction: column; align-items: center; justify-content: center; background: radial-gradient(circle, #1a1a1a, #000); color: #eee; font-family: 'Segoe UI', sans-serif; gap: 12px;">
+
+    <h1 style="margin: 0; letter-spacing: 1px; color: #4dabf7;">Automatic Lights</h1>
+    <h2 style="margin: 0; font-weight: 400; font-size: 1.1rem; color: #aaa;">Configuration</h2>
+
+    <button onclick="window.location.href='/test'" style="width: 262px; margin-top: 10px; padding: 12px; cursor: pointer; border-radius: 6px; border: none; background: #4dabf7; color: #fff; font-weight: bold; text-transform: uppercase; box-shadow: 0 4px 6px rgba(0,0,0,0.4);">
+      Test
+    </button>
+
+    <small style="color: #777; margin-bottom: 15px; font-size: 0.8rem;">Use this button to identify the light.</small>
+
+    <form action="./save.html" method="GET" enctype="text/plain" style="display: flex; flex-direction: column; align-items: center; gap: 12px;">
+
+      <input type="text" name="ssid" placeholder="SSID" style="width: 240px; padding: 10px; border-radius: 6px; border: 1px solid #444; background: #222; color: #fff; outline: none;">
+
+      <input type="password" name="password" placeholder="Password" style="width: 240px; padding: 10px; border-radius: 6px; border: 1px solid #444; background: #222; color: #fff; outline: none;">
+
+      <input type="text" name="broker" placeholder="Broker URL" style="width: 240px; padding: 10px; border-radius: 6px; border: 1px solid #444; background: #222; color: #fff; outline: none;">
+
+      <input type="text" name="topic" placeholder="Topic" style="width: 240px; padding: 10px; border-radius: 6px; border: 1px solid #444; background: #222; color: #fff; outline: none;">
+
+      <button type="submit" style="width: 262px; margin-top: 10px; padding: 12px; cursor: pointer; border-radius: 6px; border: none; background: #2ecc71; color: #fff; font-weight: bold; text-transform: uppercase; box-shadow: 0 4px 6px rgba(0,0,0,0.4);">
+        Save & Connect
+      </button>
+      <small style="color: #777; margin-bottom: 15px; font-size: 0.8rem;"> After sending this information you'll be disconnect</small>
+    </form>
+
+  </body>
+</html>

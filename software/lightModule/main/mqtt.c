@@ -16,9 +16,9 @@ static esp_err_t mqtt_event_handler_cb(esp_mqtt_event_handle_t event) {
   switch (event->event_id) {
   case MQTT_EVENT_CONNECTED:
     ESP_LOGI(TAG, "MQTT_EVENT_CONNECTED");
-    esp_mqtt_client_subscribe(client, CONFIG_TOPIC, 0);
-    esp_mqtt_client_publish(client, CONFIG_TOPIC, get_light_state_str(), 0, 1,
-                            0);
+    esp_mqtt_client_subscribe(client, device_config.topic, 0);
+    esp_mqtt_client_publish(client, device_config.topic, get_light_state_str(),
+                            0, 1, 0);
     break;
   case MQTT_EVENT_DISCONNECTED:
     ESP_LOGI(TAG, "MQTT_EVENT_DISCONNECTED");
@@ -56,7 +56,7 @@ static void mqtt_event_handler(void *handler_args, esp_event_base_t base,
 esp_mqtt_client_handle_t get_client() { return client; };
 
 void mqtt_app_start() {
-  esp_mqtt_client_config_t mqtt_cfg = {.uri = "mqtt://192.168.1.7:1883",
+  esp_mqtt_client_config_t mqtt_cfg = {.uri = device_config.broker,
                                        .disable_auto_reconnect = false,
                                        .reconnect_timeout_ms = 500};
   client = esp_mqtt_client_init(&mqtt_cfg);

@@ -14,3 +14,4 @@
 #include "lwip/err.h"
 #include "lwip/sys.h"
 void wifi_init_sta();
+void wifi_init_softap();
