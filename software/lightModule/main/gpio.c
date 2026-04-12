@@ -16,8 +16,16 @@ void initialize_gpio() {
   io_confI.pull_down_en = 0;
   io_confI.pull_up_en = 0;
   io_confI.pin_bit_mask = (1ULL << 2);
-
   gpio_config(&io_confI);
+
+  io_confI.intr_type = GPIO_INTR_NEGEDGE;
+  io_confI.mode = GPIO_MODE_INPUT;
+  io_confI.pull_down_en = 0;
+  io_confI.pull_up_en = 1;
+  io_confI.pin_bit_mask = (1ULL << 5);
+  gpio_config(&io_confI);
+
+  gpio_install_isr_service(0);
 }
 
 void update_light_state(int new_state) {

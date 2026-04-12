@@ -6,7 +6,6 @@
 #include "sdkconfig.h"
 
 static xQueueHandle gpio_evt_queue = NULL;
-nvs_handle handler;
 
 static void gpio_isr_handler(void *arg) {
   uint32_t gpio_num = (uint32_t)arg;
@@ -14,32 +13,60 @@ static void gpio_isr_handler(void *arg) {
   xQueueSendFromISR(gpio_evt_queue, &gpio_num, NULL);
 }
 
-static void gpio_task(void *arg) {
+static void light_toggle_task(void *arg) {
+  for (;;) {
+    ulTaskNotifyTake(pdTRUE, portMAX_DELAY);
+
+    int new_state = !get_light_state();
+    update_light_state(new_state);
+    get_light_state_str();
+
+    const char *msg = (new_state == 1) ? "On" : "Off";
+    esp_mqtt_client_handle_t client = get_client();
+    if (client != NULL) {
+      esp_mqtt_client_publish(client, device_config.topic, msg, 0, 1, 0);
+    }
+
+    vTaskDelay(pdMS_TO_TICKS(150));
+    gpio_isr_handler_add(0, gpio_isr_handler, (void *)0);
+  }
+}
+
+static void factory_reset_task(void *arg) {
+  for (;;) {
+    ulTaskNotifyTake(pdTRUE, portMAX_DELAY);
+    nvs_flash_erase();
+    esp_restart();
+  }
+}
+
+static TaskHandle_t light_task_handle = NULL;
+static TaskHandle_t factory_task_handle = NULL;
+
+static void gpios_tasks(void *arg) {
   uint32_t io_num;
   for (;;) {
     if (xQueueReceive(gpio_evt_queue, &io_num, portMAX_DELAY)) {
-      esp_mqtt_client_handle_t client = get_client();
-      int new_state = !get_light_state();
-      update_light_state(new_state);
-      get_light_state_str();
-      const char *msg = (new_state == 1) ? "On" : "Off";
-      if (client != NULL) {
-        esp_mqtt_client_publish(client, device_config.topic, msg, 0, 1, 0);
+      if (io_num == 0) {
+        if (light_task_handle != NULL) {
+          xTaskNotifyGive(light_task_handle);
+        }
+      } else if (io_num == 5) {
+        if (factory_task_handle != NULL) {
+          xTaskNotifyGive(factory_task_handle);
+        }
       }
-      vTaskDelay(pdMS_TO_TICKS(150));
-      gpio_isr_handler_add(0, gpio_isr_handler, (void *)0);
     }
   }
-}
+};
 
 int is_config_complete() {
   nvs_handle my_handle;
   esp_err_t err;
 
-  // 1. Open NVS in Read-Only mode
   err = nvs_open("storage", NVS_READONLY, &my_handle);
   if (err != ESP_OK) {
-    return 0; // If we can't open it, it's definitely not "complete"
+    return 0;
   }
 
   size_t ssid_len = 0;
@@ -47,38 +74,34 @@ int is_config_complete() {
   size_t broker_len = 0;
   size_t topic_len = 0;
 
-  // 2. Check if the keys exist and get their lengths
-  // nvs_get_str with NULL as the buffer returns the length including null
-  // terminator
   esp_err_t e1 = nvs_get_str(my_handle, "ssid", NULL, &ssid_len);
   esp_err_t e2 = nvs_get_str(my_handle, "password", NULL, &pass_len);
   esp_err_t e3 = nvs_get_str(my_handle, "broker", NULL, &broker_len);
   esp_err_t e4 = nvs_get_str(my_handle, "topic", NULL, &topic_len);
 
-  // 3. Close the handle
   nvs_close(my_handle);
 
-  // 4. Validate results
-  // We check if all keys exist (ESP_OK) AND they aren't just empty strings ("")
-  // Note: ssid_len of 1 means it's just a null terminator (empty string)
   if (e1 == ESP_OK && ssid_len > 1 && e2 == ESP_OK && pass_len > 1 &&
       e3 == ESP_OK && broker_len > 1 && e4 == ESP_OK && topic_len > 1) {
-    return 1; // All critical fields are filled
+    return 1;
   }
   return 0;
 }
 
 void app_main(void) {
-  // nvs_flash_erase();
   ESP_ERROR_CHECK(nvs_flash_init());
 
   ESP_ERROR_CHECK(esp_netif_init());
 
   gpio_evt_queue = xQueueCreate(10, sizeof(uint32_t));
   initialize_gpio();
-  gpio_install_isr_service(0);
-  xTaskCreate(gpio_task, "gpio_task", 2048, NULL, 10, NULL);
+  xTaskCreate(light_toggle_task, "light_task", 2048, NULL, 9,
+              &light_task_handle);
+  xTaskCreate(factory_reset_task, "factory_task", 2048, NULL, 8,
+              &factory_task_handle);
+  xTaskCreate(gpios_tasks, "gpio_task", 2048, NULL, 10, NULL);
   gpio_isr_handler_add(0, gpio_isr_handler, (void *)0);
+  gpio_isr_handler_add(5, gpio_isr_handler, (void *)5);
 
   if (is_config_complete()) {
     load_config_from_nvs();

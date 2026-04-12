@@ -1,6 +1,7 @@
 software/lightModule/build/
 software/lightModule/compile_commands.json
 **/.ccls*
+**/compile_commands.json
 software/lightModule/main/.ccls-cache/
 software/lightModule/sdkconfig
 software/lightModule/sdkconfig.old

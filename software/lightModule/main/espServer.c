@@ -100,49 +100,80 @@ void url_decode(char *dst, const char *src) {
 static esp_err_t get_handler_save(httpd_req_t *req) {
   size_t buf_len = httpd_req_get_url_query_len(req) + 1;
 
-  nvs_open("storage", NVS_READWRITE, &handler);
-  char *buf = malloc(buf_len);
-
-  if (buf == NULL)
+  if (buf_len <= 1) {
+    ESP_LOGE(TAG, "Empty query string");
     return ESP_FAIL;
-
-  if (httpd_req_get_url_query_str(req, buf, buf_len) == ESP_OK) {
-    char decoded_ssid[100];
-    char decoded_pass[100];
-    char decoded_topic[100];
-    char decoded_broker[100];
-
-    httpd_query_key_value(buf, "ssid", data.SSID, sizeof(data.SSID));
-    httpd_query_key_value(buf, "password", data.PASSWORD,
-                          sizeof(data.PASSWORD));
-    httpd_query_key_value(buf, "broker", data.BROKER, sizeof(data.BROKER));
-    httpd_query_key_value(buf, "topic", data.TOPIC, sizeof(data.TOPIC));
-
-    url_decode(decoded_ssid, data.SSID);
-    url_decode(decoded_pass, data.PASSWORD);
-    url_decode(decoded_topic, data.TOPIC);
-    url_decode(decoded_broker, data.BROKER);
-
-    nvs_set_str(handler, "ssid", decoded_ssid);
-    nvs_set_str(handler, "password", decoded_pass);
-    nvs_set_str(handler, "broker", decoded_broker);
-    nvs_set_str(handler, "topic", decoded_topic);
-
-    ESP_LOGI(TAG, "Config Updated: SSID=%s, pass=%s, broker=%s, Topic=%s",
-             decoded_ssid, decoded_pass, decoded_broker, decoded_topic);
-    nvs_commit(handler);
-    nvs_close(handler);
   }
+
+  char *buf = malloc(buf_len);
+  if (buf == NULL) {
+    ESP_LOGE(TAG, "Failed to allocate query buffer");
+    return ESP_FAIL;
+  }
+
+  if (httpd_req_get_url_query_str(req, buf, buf_len) != ESP_OK) {
+    ESP_LOGE(TAG, "Failed to get query string");
+    free(buf);
+    return ESP_FAIL;
+  }
+
+  // Parse raw values
+  httpd_query_key_value(buf, "ssid", data.SSID, sizeof(data.SSID));
+  httpd_query_key_value(buf, "password", data.PASSWORD, sizeof(data.PASSWORD));
+  httpd_query_key_value(buf, "broker", data.BROKER, sizeof(data.BROKER));
+  httpd_query_key_value(buf, "topic", data.TOPIC, sizeof(data.TOPIC));
   free(buf);
 
-  char *response_message = success_page();
-  httpd_resp_send(req, response_message, strlen(response_message));
-  ESP_LOGI(TAG, "Rebooting in 2 seconds...");
+  // URL decode
+  char decoded_ssid[64];
+  char decoded_pass[64];
+  char decoded_broker[128];
+  char decoded_topic[128];
+
+  url_decode(decoded_ssid, data.SSID);
+  url_decode(decoded_pass, data.PASSWORD);
+  url_decode(decoded_broker, data.BROKER);
+  url_decode(decoded_topic, data.TOPIC);
+
+  ESP_LOGI(TAG, "Saving → SSID=%s BROKER=%s TOPIC=%s", decoded_ssid,
+           decoded_broker, decoded_topic);
+
+  nvs_handle handle;
+  esp_err_t err = nvs_open("storage", NVS_READWRITE, &handle);
+  if (err != ESP_OK) {
+    ESP_LOGE(TAG, "nvs_open failed: %s", esp_err_to_name(err));
+    return ESP_FAIL;
+  }
+
+  bool write_ok = (nvs_set_str(handle, "ssid", decoded_ssid) == ESP_OK) &&
+                  (nvs_set_str(handle, "password", decoded_pass) == ESP_OK) &&
+                  (nvs_set_str(handle, "broker", decoded_broker) == ESP_OK) &&
+                  (nvs_set_str(handle, "topic", decoded_topic) == ESP_OK);
+
+  if (!write_ok) {
+    ESP_LOGE(TAG, "One or more nvs_set_str failed");
+    nvs_close(handle);
+    return ESP_FAIL;
+  }
+
+  err = nvs_commit(handle); // ← flush to flash
+  nvs_close(handle);        // ← always close
+
+  if (err != ESP_OK) {
+    ESP_LOGE(TAG, "nvs_commit failed: %s", esp_err_to_name(err));
+    return ESP_FAIL;
+  }
+
+  ESP_LOGI(TAG, "Config saved successfully, rebooting in 2s...");
+  // ─────────────────────────────────────────────────────
+
+  char *response = success_page();
+  httpd_resp_send(req, response, strlen(response));
+
   vTaskDelay(pdMS_TO_TICKS(2000));
   esp_restart();
   return ESP_OK;
-};
-
+}
 static esp_err_t get_handler_form(httpd_req_t *req) {
   char *response_message = formPage();
   httpd_resp_send(req, response_message, strlen(response_message));
