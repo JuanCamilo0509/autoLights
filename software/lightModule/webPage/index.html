@@ -10,11 +10,20 @@
     <h1 style="margin: 0; letter-spacing: 1px; color: #4dabf7;">Automatic Lights</h1>
     <h2 style="margin: 0; font-weight: 400; font-size: 1.1rem; color: #aaa;">Configuration</h2>
 
-    <button onclick="window.location.href='/test'" style="width: 262px; margin-top: 10px; padding: 12px; cursor: pointer; border-radius: 6px; border: none; background: #4dabf7; color: #fff; font-weight: bold; text-transform: uppercase; box-shadow: 0 4px 6px rgba(0,0,0,0.4);">
+    <button onclick="testLight()" style="width: 262px; margin-top: 10px; padding: 12px; cursor: pointer; border-radius: 6px; border: none; background: #4dabf7; color: #fff; font-weight: bold; text-transform: uppercase; box-shadow: 0 4px 6px rgba(0,0,0,0.4);">
       Test
     </button>
-
-    <small style="color: #777; margin-bottom: 15px; font-size: 0.8rem;">Use this button to identify the light.</small>
+    <small id="test-status" style="color: #777; margin-bottom: 15px; font-size: 0.8rem;">Use this button to identify the light.</small>
+    <script>
+      function testLight() {
+        fetch('/test', { method: 'POST' })
+          .then(response => response.text())
+          .then(data => {
+            document.getElementById('test-status').textContent = data;
+          })
+          .catch(err => console.error('Error:', err));
+      }
+    </script>
 
     <form action="./save.html" method="GET" enctype="text/plain" style="display: flex; flex-direction: column; align-items: center; gap: 12px;">
 
