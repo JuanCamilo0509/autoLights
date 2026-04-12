@@ -1,4 +1,5 @@
 #include "espServer.h"
+#include "gpio.h"
 #include <ctype.h>
 
 struct {
@@ -20,7 +21,7 @@ static char *success_page() {
   <meta name=\"viewport\" content=\"width=device-width, initial-scale=1.0\">\
   <title>Success - Esp32</title>\
 </head>\
-<body style=\"display: flex; height: 100vh; margin: 0; flex-direction: column; align-items: center; justify-content: center; background: radial-gradient(circle, #1a1a1a, #000); color: #eee; font-family: \'Segoe UI\', sans-serif; text-align: center; gap: 20px;\">\
+<body style=\"display: flex; height: 100vh; margin: 0; flex-direction: column; align-items: center; justify-content: center; background: radial-gradient(circle, #1a1a1a, #000); color: #eee; font-family: 'Segoe UI', sans-serif; text-align: center; gap: 20px;\">\
     <svg width=\"80\" height=\"80\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"#2ecc71\" stroke-width=\"2\" stroke-linecap=\"round\" stroke-linejoin=\"round\">\
         <path d=\"M22 11.08V12a10 10 0 1 1-5.93-9.14\"></path>\
         <polyline points=\"22 4 12 14.01 9 11.01\"></polyline>\
@@ -38,6 +39,7 @@ static char *success_page() {
 </html>\
 ";
 };
+
 static char *formPage() {
   return "<!DOCTYPE html>\
 <html lang=\"en\">\
@@ -46,12 +48,14 @@ static char *formPage() {
     <meta name=\"viewport\" content=\"width=device-width, initial-scale=1.0\">\
     <title>EspSetVariables</title>\
   </head>\
-  <body style=\"display: flex; min-height: 100vh; margin: 0; flex-direction: column; align-items: center; justify-content: center; background: radial-gradient(circle, #1a1a1a, #000); color: #eee; font-family: \'Segoe UI\', sans-serif; gap: 12px;\">\
+  <body style=\"display: flex; min-height: 100vh; margin: 0; flex-direction: column; align-items: center; justify-content: center; background: radial-gradient(circle, #1a1a1a, #000); color: #eee; font-family: 'Segoe UI', sans-serif; gap: 12px;\">\
     <h1 style=\"margin: 0; letter-spacing: 1px; color: #4dabf7;\">Automatic Lights</h1>\
     <h2 style=\"margin: 0; font-weight: 400; font-size: 1.1rem; color: #aaa;\">Configuration</h2>\
-    <button onclick=\"window.location.href=\'/test\'\" style=\"width: 262px; margin-top: 10px; padding: 12px; cursor: pointer; border-radius: 6px; border: none; background: #4dabf7; color: #fff; font-weight: bold; text-transform: uppercase; box-shadow: 0 4px 6px rgba(0,0,0,0.4);\">\
+    <form action=\"/test\" method=\"POST\" style=\"display: flex; flex-direction: column; align-items: center; gap: 0;\">\
+      <button type=\"submit\" style=\"width: 262px; margin-top: 10px; padding: 12px; cursor: pointer; border-radius: 6px; border: none; background: #4dabf7; color: #fff; font-weight: bold; text-transform: uppercase; box-shadow: 0 4px 6px rgba(0,0,0,0.4);\">\
       Test\
-    </button>\
+      </button>\
+    </form>\
     <small style=\"color: #777; margin-bottom: 15px; font-size: 0.8rem;\">Use this button to identify the light.</small>\
     <form action=\"./save.html\" method=\"GET\" style=\"display: flex; flex-direction: column; align-items: center; gap: 12px;\">\
       <input type=\"text\" name=\"ssid\" placeholder=\"SSID\" style=\"width: 240px; padding: 10px; border-radius: 6px; border: 1px solid #444; background: #222; color: #fff; outline: none;\">\
@@ -61,7 +65,7 @@ static char *formPage() {
       <button type=\"submit\" style=\"width: 262px; margin-top: 10px; padding: 12px; cursor: pointer; border-radius: 6px; border: none; background: #2ecc71; color: #fff; font-weight: bold; text-transform: uppercase; box-shadow: 0 4px 6px rgba(0,0,0,0.4);\">\
         Save & Connect\
       </button>\
-      <small style=\"color: #777; margin-bottom: 15px; font-size: 0.8rem;\"> After sending this information you\'ll be disconnect</small>\
+      <small style=\"color: #777; margin-bottom: 15px; font-size: 0.8rem;\"> After sending this information you'll be disconnect</small>\
     </form>\
   </body>\
 </html>\
@@ -149,6 +153,22 @@ static esp_err_t get_handler_form(httpd_req_t *req) {
   return ESP_OK;
 };
 
+static esp_err_t post_handler_test(httpd_req_t *req) {
+  // Toggle the light state
+  int current_state = get_light_state();
+  int new_state = current_state ? 0 : 1;
+  update_light_state(new_state);
+  
+  ESP_LOGI(TAG, "Light test: toggled from %s to %s", 
+           current_state ? "On" : "Off", 
+           new_state ? "On" : "Off");
+  
+  // Return to form page
+  char *response_message = formPage();
+  httpd_resp_send(req, response_message, strlen(response_message));
+  return ESP_OK;
+}
+
 httpd_uri_t form = {.uri = "/",
                     .method = HTTP_GET,
                     .handler = get_handler_form,
@@ -157,6 +177,11 @@ httpd_uri_t form = {.uri = "/",
 httpd_uri_t save = {.uri = "/save.html",
                     .method = HTTP_GET,
                     .handler = get_handler_save,
+                    .user_ctx = NULL};
+
+httpd_uri_t test = {.uri = "/test",
+                    .method = HTTP_POST,
+                    .handler = post_handler_test,
                     .user_ctx = NULL};
 
 httpd_handle_t start_webserver(void) {
@@ -169,6 +194,7 @@ httpd_handle_t start_webserver(void) {
     // Set URI handlers
     httpd_register_uri_handler(server, &form);
     httpd_register_uri_handler(server, &save);
+    httpd_register_uri_handler(server, &test);
     return server;
   }
 
