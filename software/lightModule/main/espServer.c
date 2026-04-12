@@ -1,4 +1,5 @@
 #include "espServer.h"
+#include "gpio.h"
 #include <ctype.h>
 
 struct {
@@ -52,7 +53,17 @@ static char *formPage() {
     <button onclick=\"window.location.href=\'/test\'\" style=\"width: 262px; margin-top: 10px; padding: 12px; cursor: pointer; border-radius: 6px; border: none; background: #4dabf7; color: #fff; font-weight: bold; text-transform: uppercase; box-shadow: 0 4px 6px rgba(0,0,0,0.4);\">\
       Test\
     </button>\
-    <small style=\"color: #777; margin-bottom: 15px; font-size: 0.8rem;\">Use this button to identify the light.</small>\
+    <small id="test-status" style=\"color: #777; margin-bottom: 15px; font-size: 0.8rem;\">Use this button to identify the light.</small>\
+    <script>\
+      function testLight() {\
+        fetch('/test', { method: 'POST' })\
+          .then(response => response.text())\
+          .then(data => {\
+            document.getElementById('test-status').textContent = data;\
+          })\
+          .catch(err => console.error('Error:', err));\
+      }\
+    </script>\
     <form action=\"./save.html\" method=\"GET\" style=\"display: flex; flex-direction: column; align-items: center; gap: 12px;\">\
       <input type=\"text\" name=\"ssid\" placeholder=\"SSID\" style=\"width: 240px; padding: 10px; border-radius: 6px; border: 1px solid #444; background: #222; color: #fff; outline: none;\">\
       <input type=\"password\" name=\"password\" placeholder=\"Password\" style=\"width: 240px; padding: 10px; border-radius: 6px; border: 1px solid #444; background: #222; color: #fff; outline: none;\">\
@@ -149,6 +160,20 @@ static esp_err_t get_handler_form(httpd_req_t *req) {
   return ESP_OK;
 };
 
+static esp_err_t post_handler_test(httpd_req_t *req) {
+  // Toggle the light state
+  int current_state = get_light_state();
+  int new_state = current_state ? 0 : 1;
+  update_light_state(new_state);
+  
+  ESP_LOGI(TAG, "Test button pressed - Light toggled to: %s", new_state ? "On" : "Off");
+  
+  // Send response back to client
+  const char *response = new_state ? "Light is ON" : "Light is OFF";
+  httpd_resp_send(req, response, strlen(response));
+  return ESP_OK;
+};
+
 httpd_uri_t form = {.uri = "/",
                     .method = HTTP_GET,
                     .handler = get_handler_form,
@@ -158,6 +183,11 @@ httpd_uri_t save = {.uri = "/save.html",
                     .method = HTTP_GET,
                     .handler = get_handler_save,
                     .user_ctx = NULL};
+httpd_uri_t test = {.uri = "/test",
+                    .method = HTTP_POST,
+                    .handler = post_handler_test,
+                    .user_ctx = NULL};
+
 
 httpd_handle_t start_webserver(void) {
   httpd_handle_t server = NULL;
@@ -169,6 +199,7 @@ httpd_handle_t start_webserver(void) {
     // Set URI handlers
     httpd_register_uri_handler(server, &form);
     httpd_register_uri_handler(server, &save);
+    httpd_register_uri_handler(server, &test);
     return server;
   }
 

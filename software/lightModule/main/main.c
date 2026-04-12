@@ -69,13 +69,17 @@ int is_config_complete() {
 }
 
 void app_main(void) {
-  // nvs_flash_erase();
   ESP_ERROR_CHECK(nvs_flash_init());
 
   ESP_ERROR_CHECK(esp_netif_init());
 
   gpio_evt_queue = xQueueCreate(10, sizeof(uint32_t));
   initialize_gpio();
+
+  // Initialize factory reset ISR on GPIO3 (RX pin)
+  // This allows users to reset the device to factory settings by grounding this pin
+  initialize_factory_reset_gpio();
+
   gpio_install_isr_service(0);
   xTaskCreate(gpio_task, "gpio_task", 2048, NULL, 10, NULL);
   gpio_isr_handler_add(0, gpio_isr_handler, (void *)0);
