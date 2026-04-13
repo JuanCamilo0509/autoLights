@@ -15,6 +15,14 @@ This project aims to be a plug and play wall switch based on the esp8266 board a
 This project has two main directories:
     - Software: Two main sub-directories, the light-Module where the code for the esp is maintain, and the "mosquitto-Server" with the ".conf" file for the server. 
     - Hardware: In this repository you can find the PCB layout for the board and the 3d model for the case.
+## How to configure an ESP?
+1. Upload the code to the esp.
+2. When power, the esp will create a WIFI entrance call "esp".
+3. Connect to "esp" Network.
+4. Using any browser go to `htpp://192.168.4.1/`.
+5. Fill all the information for the esp. (You can test the light to know which light you're setting up).
+6. Send all the information. The esp should restart with all the information saved.
+7. You're done, try to change the state from your phone. (I recommend using IoT MQTT Panel to test it).
 
 ## Features
 - HTTP Server on SoftAP mode when the variables aren't on the esp memory to set them up: (SSID, WiFi password, broker and topic).
@@ -28,10 +36,3 @@ This project has two main directories:
     </td>
   </tr>
 </table>
-
-
-
-## Future features. 
-- Get the button from the web page to work. So you can connect all the esp to your house and then test them and configurare them in place.
-- 3d model case for the switch.
-
