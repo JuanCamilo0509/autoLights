@@ -1,4 +1,5 @@
 #include "espServer.h"
+#include "gpio.h"
 #include <ctype.h>
 
 struct {
@@ -42,17 +43,21 @@ static char *formPage() {
   return "<!DOCTYPE html>\
 <html lang=\"en\">\
   <head>\
-    <meta charset=\"UTF-8\">\
-    <meta name=\"viewport\" content=\"width=device-width, initial-scale=1.0\">\
+    <meta charset=\"UTF-8\" />\
+    <meta name=\"viewport\" content=\"width=device-width, initial-scale=1.0\" />\
     <title>EspSetVariables</title>\
   </head>\
   <body style=\"display: flex; min-height: 100vh; margin: 0; flex-direction: column; align-items: center; justify-content: center; background: radial-gradient(circle, #1a1a1a, #000); color: #eee; font-family: \'Segoe UI\', sans-serif; gap: 12px;\">\
     <h1 style=\"margin: 0; letter-spacing: 1px; color: #4dabf7;\">Automatic Lights</h1>\
     <h2 style=\"margin: 0; font-weight: 400; font-size: 1.1rem; color: #aaa;\">Configuration</h2>\
-    <button onclick=\"window.location.href=\'/test\'\" style=\"width: 262px; margin-top: 10px; padding: 12px; cursor: pointer; border-radius: 6px; border: none; background: #4dabf7; color: #fff; font-weight: bold; text-transform: uppercase; box-shadow: 0 4px 6px rgba(0,0,0,0.4);\">\
+    <button\
+      onclick=\"testLight()\"\
+      style=\"width: 262px; margin-top: 10px; padding: 12px; cursor: pointer; border-radius: 6px; border: none; background: #4dabf7; color: #fff; font-weight: bold; text-transform: uppercase; box-shadow: 0 4px 6px rgba(0,0,0,0.4);\">\
       Test\
     </button>\
-    <small style=\"color: #777; margin-bottom: 15px; font-size: 0.8rem;\">Use this button to identify the light.</small>\
+    <small id=\"test-status\" style=\"color: #777; margin-bottom: 15px; font-size: 0.8rem;\">\
+      Use this button to identify the light.\
+    </small>\
     <form action=\"./save.html\" method=\"GET\" style=\"display: flex; flex-direction: column; align-items: center; gap: 12px;\">\
       <input type=\"text\" name=\"ssid\" placeholder=\"SSID\" style=\"width: 240px; padding: 10px; border-radius: 6px; border: 1px solid #444; background: #222; color: #fff; outline: none;\">\
       <input type=\"password\" name=\"password\" placeholder=\"Password\" style=\"width: 240px; padding: 10px; border-radius: 6px; border: 1px solid #444; background: #222; color: #fff; outline: none;\">\
@@ -61,8 +66,25 @@ static char *formPage() {
       <button type=\"submit\" style=\"width: 262px; margin-top: 10px; padding: 12px; cursor: pointer; border-radius: 6px; border: none; background: #2ecc71; color: #fff; font-weight: bold; text-transform: uppercase; box-shadow: 0 4px 6px rgba(0,0,0,0.4);\">\
         Save & Connect\
       </button>\
-      <small style=\"color: #777; margin-bottom: 15px; font-size: 0.8rem;\"> After sending this information you\'ll be disconnect</small>\
+      <small style=\"color: #777; margin-bottom: 15px; font-size: 0.8rem;\">\
+        After sending this information you\'ll be disconnect\
+      </small>\
     </form>\
+    <script>\
+      async function testLight() {\
+        const status = document.getElementById(\"test-status\");\
+        status.textContent = \"Testing light...\";\
+        try {\
+          const response = await fetch(\"/test\", {\
+            method: \"GET\"\
+          });\
+          const text = await response.text();\
+          status.textContent = text || \"Light toggled\";\
+        } catch (error) {\
+          status.textContent = \"Error testing light\";\
+        }\
+      }\
+    </script>\
   </body>\
 </html>\
 ";
@@ -156,8 +178,8 @@ static esp_err_t get_handler_save(httpd_req_t *req) {
     return ESP_FAIL;
   }
 
-  err = nvs_commit(handle); // ← flush to flash
-  nvs_close(handle);        // ← always close
+  err = nvs_commit(handle); 
+  nvs_close(handle);        
 
   if (err != ESP_OK) {
     ESP_LOGE(TAG, "nvs_commit failed: %s", esp_err_to_name(err));
@@ -165,7 +187,6 @@ static esp_err_t get_handler_save(httpd_req_t *req) {
   }
 
   ESP_LOGI(TAG, "Config saved successfully, rebooting in 2s...");
-  // ─────────────────────────────────────────────────────
 
   char *response = success_page();
   httpd_resp_send(req, response, strlen(response));
@@ -180,6 +201,16 @@ static esp_err_t get_handler_form(httpd_req_t *req) {
   return ESP_OK;
 };
 
+static esp_err_t get_handler_test(httpd_req_t *req) {
+  int new_state = !get_light_state();
+  update_light_state(new_state);
+  httpd_resp_set_type(req, "text/plain");
+  httpd_resp_send(req, new_state ? "Light ON" : "Light OFF",
+                  sizeof("Light ON"));
+
+  return ESP_OK;
+};
+
 httpd_uri_t form = {.uri = "/",
                     .method = HTTP_GET,
                     .handler = get_handler_form,
@@ -189,6 +220,11 @@ httpd_uri_t save = {.uri = "/save.html",
                     .method = HTTP_GET,
                     .handler = get_handler_save,
                     .user_ctx = NULL};
+
+httpd_uri_t lightToogle = {.uri = "/test",
+                           .method = HTTP_GET,
+                           .handler = get_handler_test,
+                           .user_ctx = NULL};
 
 httpd_handle_t start_webserver(void) {
   httpd_handle_t server = NULL;
@@ -200,6 +236,7 @@ httpd_handle_t start_webserver(void) {
     // Set URI handlers
     httpd_register_uri_handler(server, &form);
     httpd_register_uri_handler(server, &save);
+    httpd_register_uri_handler(server, &lightToogle);
     return server;
   }
 
